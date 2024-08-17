@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('electron', {
     nodeVersion: (callback) => ipcRenderer.on('node-version', callback),
     selectApkFile: (apkFilePath) => ipcRenderer.send('apk-file-selected', apkFilePath),
     apktoolOutput: (callback) => ipcRenderer.on('apktool-output', callback),
-    toggleFileInput: (callback) => ipcRenderer.on('toggle-file-input', callback)
+    toggleFileInput: (callback) => ipcRenderer.on('toggle-file-input', callback),
+    updateBundleName: (callback) => ipcRenderer.on('update-bundle-name', callback)
 });

@@ -132,23 +132,44 @@ function runApktool(apkFilePath) {
     });
 
     apktoolProcess.on('close', (code) => {
-        isProcessing = false; // Reset the flag when the process is complete
-        selectedApkFile = null; // Clear the selected APK file
-
-        mainWindow.webContents.send('toggle-file-input', true); // Re-enable file input
+        isProcessing = false;
+        selectedApkFile = null;
 
         if (code === 0) {
             const apktoolVersion = '2.9.3';
             const completionMessage = `Apktool ${apktoolVersion} extraction complete`;
             console.log(completionMessage);
             mainWindow.webContents.send('log-message', completionMessage);
+
+            const bundleName = extractPackageName(outputFolder);
+            mainWindow.webContents.send('update-bundle-name', bundleName);
         } else {
             const errorMessage = `apktool process exited with code ${code}`;
             console.error(errorMessage);
             mainWindow.webContents.send('log-message', errorMessage);
             dialog.showErrorBox('Error', errorMessage);
         }
+
+        mainWindow.webContents.send('toggle-file-input', true);
     });
+
+}
+
+function extractPackageName(outputFolder) {
+    const fs = require('fs');
+    const path = require('path');
+    const manifestPath = path.join(outputFolder, 'AndroidManifest.xml');
+
+    if (fs.existsSync(manifestPath)) {
+        const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+        const packageMatch = manifestContent.match(/package="([^"]+)"/);
+
+        if (packageMatch && packageMatch[1]) {
+            return packageMatch[1];
+        }
+    }
+
+    return null;
 }
 
 function createWindow() {
@@ -156,8 +177,8 @@ function createWindow() {
     cleanOutputDirectory();
 
     mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: 1000,
+        height: 800,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
         },

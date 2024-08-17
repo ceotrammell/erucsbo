@@ -14,7 +14,7 @@
         .console-box {
             background-color: #2f2f2f;
             border-radius: 8px;
-            height: 150px;
+            height: 350px;
             overflow-y: auto;
             padding: 10px;
             color: white;
@@ -120,6 +120,8 @@
                 <div id="pythonVersion">N/A</div>
                 <div><strong>Node Version:</strong></div>
                 <div id="nodeVersion">N/A</div>
+                <div><strong>Bundle:</strong></div>
+                <div id="bundleName">N/A</div>
             </div>
         </div>
 
@@ -132,6 +134,7 @@
     <script>
         // Handle file selection
         function handleFileSelect(event) {
+
             if (event.target.disabled) {
                 logToConsole('An APK is already being processed. Please wait.');
                 event.preventDefault();
@@ -139,31 +142,30 @@
             }
 
             const file = event.target.files[0];
+
+            if (!file) {
+                logToConsole('File selection canceled.');
+                return; // Exit if no file is selected (e.g., when the user presses "Cancel")
+            }
+
             const fileInfo = document.getElementById('fileInfo');
             const fileName = document.getElementById('fileName');
             const fileSize = document.getElementById('fileSize');
 
-            if (file) {
-                if (file.name.endsWith('.apk')) {
-                    fileName.textContent = file.name;
-                    fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`;
-                    fileInfo.style.display = 'block';
-                    logToConsole('This may take a few moments, please be patient :)');
-                    logToConsole(`Selected file: ${file.name}`);
-                    logToConsole(`File size: ${(file.size / 1024).toFixed(2)} KB`);
+            if (file.name.endsWith('.apk')) {
+                fileName.textContent = file.name;
+                fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`;
+                fileInfo.style.display = 'block';
+                logToConsole('This may take a few moments, please be patient :)');
+                logToConsole(`Selected file: ${file.name}`);
+                logToConsole(`File size: ${(file.size / 1024).toFixed(2)} KB`);
 
-                    window.electron.selectApkFile(file.path);
-                } else {
-                    alert('Please select a valid .apk file.');
-                    event.target.value = '';
-                    fileInfo.style.display = 'none';
-                    logToConsole('Invalid file type selected.');
-                }
+                window.electron.selectApkFile(file.path);
             } else {
-                fileName.textContent = 'N/A';
-                fileSize.textContent = 'N/A';
+                alert('Please select a valid .apk file.');
+                event.target.value = '';
                 fileInfo.style.display = 'none';
-                logToConsole('No file selected.');
+                logToConsole('Invalid file type selected.');
             }
         }
 
@@ -208,6 +210,21 @@
         window.electron.apktoolOutput((event, output) => {
             logToConsole(output);
         });
+
+        window.electron.updateBundleName((event, bundleName) => {
+            updateBundleName(bundleName);
+        });
+
+        function updateBundleName(bundleName) {
+            const bundleElement = document.getElementById('bundleName');
+            if (bundleName) {
+                bundleElement.textContent = bundleName;
+                logToConsole(`Bundle: ${bundleName}`);
+            } else {
+                bundleElement.textContent = 'N/A';
+                logToConsole('Failed to extract bundle name.');
+            }
+        }
 
         logToConsole('Initializing Erucsbo...');
     </script>

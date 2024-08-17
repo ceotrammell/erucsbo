@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, Menu } = require('electron');
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -33,6 +33,26 @@ function getPythonCommand() {
         console.error('Python not found. Please ensure that Python is installed and available in PATH.');
         dialog.showErrorBox('Error', 'Python is not installed or not available in PATH. Please install Python.');
         app.quit();
+    }
+}
+
+function getPythonVersion(pythonCommand) {
+    try {
+        const pythonVersion = execSync(`${pythonCommand} --version`).toString().trim();
+        return pythonVersion;
+    } catch (err) {
+        console.error('Unable to determine Python version.');
+        return 'Unknown';
+    }
+}
+
+function getNodeVersion() {
+    try {
+        const nodeVersion = execSync('node --version').toString().trim();
+        return nodeVersion;
+    } catch (err) {
+        console.error('Unable to determine Node.js version.');
+        return 'Unknown';
     }
 }
 
@@ -77,6 +97,9 @@ function createWindow() {
 
     mainWindow.loadFile('index.html');
 
+    // Remove default menu
+    Menu.setApplicationMenu(null);
+
     // Check Python installation
     const pythonCommand = getPythonCommand();
     if (!pythonCommand) {
@@ -84,7 +107,17 @@ function createWindow() {
         app.quit();
     } else {
         console.log(`Python found at: ${pythonCommand}`);
+        const pythonVersion = getPythonVersion(pythonCommand);
+        mainWindow.webContents.on('did-finish-load', () => {
+            mainWindow.webContents.send('python-version', pythonVersion);
+        });
     }
+
+    // Get Node.js version
+    const nodeVersion = getNodeVersion();
+    mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('node-version', nodeVersion);
+    });
 
     // Check Apktool installation
     checkApktool();

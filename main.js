@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 
 const outputDir = path.join(__dirname, 'outputs');
+let mainWindow;
 
 function installDependencies() {
     const nodeModulesPath = path.join(__dirname, 'node_modules');
@@ -70,6 +71,22 @@ function checkApktool() {
     }
 }
 
+function ensureHermesDirectories() {
+    const toolsPath = path.join(__dirname, 'resources', 'tools', 'hermes');
+    const disassemblyOutput = path.join(toolsPath, 'disassemreact');
+    const decompiledOutput = path.join(toolsPath, 'decompiledreact');
+
+    if (!fs.existsSync(disassemblyOutput)) {
+        fs.mkdirSync(disassemblyOutput, { recursive: true });
+        console.log(`Created directory: ${disassemblyOutput}`);
+    }
+
+    if (!fs.existsSync(decompiledOutput)) {
+        fs.mkdirSync(decompiledOutput, { recursive: true });
+        console.log(`Created directory: ${decompiledOutput}`);
+    }
+}
+
 function cleanOutputDirectory() {
     if (fs.existsSync(outputDir)) {
         fs.rmSync(outputDir, { recursive: true, force: true });
@@ -90,28 +107,39 @@ function runApktool(apkFilePath) {
     // Ensure the output folder is ready
     if (fs.existsSync(outputFolder)) {
         fs.rmSync(outputFolder, { recursive: true, force: true });
+        console.log('Output directory cleared.');
+        mainWindow.webContents.send('log-message', 'Output directory cleared.');
     }
 
-    // Run apktool using spawn
+    fs.mkdirSync(outputFolder, { recursive: true });
+    console.log('Output directory created.');
+    mainWindow.webContents.send('log-message', 'Output directory created.');
+
     const apktoolProcess = os.platform() === 'win32'
-        ? spawn('cmd', ['/c', apktoolPath, 'd', apkFilePath, '-o', outputFolder])
-        : spawn(apktoolPath, ['d', apkFilePath, '-o', outputFolder]);
+        ? spawn('cmd', ['/c', apktoolPath, 'd', apkFilePath, '-f', '-o', outputFolder])
+        : spawn(apktoolPath, ['d', apkFilePath, '-f', '-o', outputFolder]);
 
     apktoolProcess.stdout.on('data', (data) => {
-        console.log(`apktool output: ${data}`);
+        const message = data.toString().trim();
+        console.log(message);
+        mainWindow.webContents.send('log-message', message);
     });
 
     apktoolProcess.stderr.on('data', (data) => {
-        console.error(`apktool error: ${data}`);
+        const errorMessage = data.toString().trim();
+        console.error(errorMessage);
+        mainWindow.webContents.send('log-message', errorMessage);
     });
 
     apktoolProcess.on('close', (code) => {
         if (code === 0) {
             console.log('APK decompiled successfully.');
-            dialog.showMessageBox({ message: 'APK decompiled successfully!' });
+            mainWindow.webContents.send('log-message', 'APK decompiled successfully!');
         } else {
-            console.error(`apktool process exited with code ${code}`);
-            dialog.showErrorBox('Error', `Failed to decompile APK. Exit code: ${code}`);
+            const errorMessage = `apktool process exited with code ${code}`;
+            console.error(errorMessage);
+            mainWindow.webContents.send('log-message', errorMessage);
+            dialog.showErrorBox('Error', errorMessage);
         }
     });
 }
@@ -120,7 +148,7 @@ function createWindow() {
     installDependencies(); // Ensure dependencies are installed
     cleanOutputDirectory(); // Clean output directory on startup
 
-    const mainWindow = new BrowserWindow({
+    mainWindow = new BrowserWindow({ // Use the global mainWindow variable
         width: 800,
         height: 600,
         webPreferences: {
@@ -168,6 +196,7 @@ function createWindow() {
 
     // No further actions on startup, just setting up the environment
 }
+
 
 app.whenReady().then(() => {
     app.dock?.setIcon(path.join(__dirname, 'assets', 'icons', 'erucsbo.jpg'));

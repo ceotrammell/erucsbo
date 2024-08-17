@@ -149,6 +149,11 @@
             document.getElementById('fileInfo').style.display = 'block';
         });
 
+        // Listen for log messages from the main process
+        window.electron.logMessage((event, message) => {
+            logToConsole(message);
+        });
+
         // Handle apktool output
         window.electron.apktoolOutput((event, output) => {
             logToConsole(output);

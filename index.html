@@ -112,6 +112,9 @@
                     fileInfo.style.display = 'block';
                     logToConsole(`Selected file: ${file.name}`);
                     logToConsole(`File size: ${(file.size / 1024).toFixed(2)} KB`);
+
+                    // Send the APK file path to the main process to run apktool
+                    window.electron.selectApkFile(file.path);
                 } else {
                     alert('Please select a valid .apk file.');
                     event.target.value = ''; // Clear the input
@@ -144,6 +147,11 @@
         window.electron.nodeVersion((event, version) => {
             document.getElementById('nodeVersion').textContent = version;
             document.getElementById('fileInfo').style.display = 'block';
+        });
+
+        // Handle apktool output
+        window.electron.apktoolOutput((event, output) => {
+            logToConsole(output);
         });
 
         logToConsole('Initializing Erucsbo...');

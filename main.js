@@ -1,11 +1,13 @@
 const { app, BrowserWindow, dialog, Menu } = require('electron');
-const { execSync, execFile } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
 const outputDir = path.join(__dirname, 'outputs');
 let mainWindow;
+let isProcessing = false;  // Flag to track if apktool is running
+let selectedApkFile = null; // Variable to store the selected APK file path
 
 function installDependencies() {
     const nodeModulesPath = path.join(__dirname, 'node_modules');
@@ -19,11 +21,9 @@ function installDependencies() {
 function getPythonCommand() {
     try {
         if (os.platform() === 'win32') {
-            // On Windows, use `where` command
             const pythonPath = execSync('where python').toString().trim().split('\n')[0];
             return pythonPath;
         } else {
-            // On macOS/Linux, use `which` command
             try {
                 const python3Path = execSync('which python3').toString().trim();
                 return python3Path;
@@ -96,15 +96,15 @@ function cleanOutputDirectory() {
     console.log('Output directory created.');
 }
 
-const { spawn } = require('child_process');
-
 function runApktool(apkFilePath) {
+    isProcessing = true; // Set the flag to true when starting
+    selectedApkFile = apkFilePath; // Store the selected APK file
+
     const outputFolder = path.join(outputDir, 'decompiled');
     const apktoolPath = os.platform() === 'win32'
         ? path.join(__dirname, 'resources', 'tools', 'apktool', 'apktool.bat')
         : path.join(__dirname, 'resources', 'tools', 'apktool', 'apktool');
 
-    // Ensure the output folder is ready
     if (fs.existsSync(outputFolder)) {
         fs.rmSync(outputFolder, { recursive: true, force: true });
         console.log('Output directory cleared.');
@@ -132,6 +132,11 @@ function runApktool(apkFilePath) {
     });
 
     apktoolProcess.on('close', (code) => {
+        isProcessing = false; // Reset the flag when the process is complete
+        selectedApkFile = null; // Clear the selected APK file
+
+        mainWindow.webContents.send('toggle-file-input', true); // Re-enable file input
+
         if (code === 0) {
             const apktoolVersion = '2.9.3';
             const completionMessage = `Apktool ${apktoolVersion} extraction complete`;
@@ -147,10 +152,10 @@ function runApktool(apkFilePath) {
 }
 
 function createWindow() {
-    installDependencies(); // Ensure dependencies are installed
-    cleanOutputDirectory(); // Clean output directory on startup
+    installDependencies();
+    cleanOutputDirectory();
 
-    mainWindow = new BrowserWindow({ // Use the global mainWindow variable
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
@@ -160,11 +165,22 @@ function createWindow() {
     });
 
     mainWindow.loadFile('index.html');
-
-    // Remove default menu
     Menu.setApplicationMenu(null);
 
-    // Check Python installation
+    mainWindow.on('close', (event) => {
+        if (isProcessing) {
+            const choice = dialog.showMessageBoxSync(mainWindow, {
+                type: 'question',
+                buttons: ['Yes', 'No'],
+                title: 'Confirm',
+                message: 'An APK file is currently being processed. Are you sure you want to quit?',
+            });
+            if (choice === 1) {
+                event.preventDefault(); // Prevent the window from closing
+            }
+        }
+    });
+
     const pythonCommand = getPythonCommand();
     if (!pythonCommand) {
         dialog.showErrorBox('Error', 'Python is not installed. The application will now close.');
@@ -177,28 +193,27 @@ function createWindow() {
         });
     }
 
-    // Get Node.js version
     const nodeVersion = getNodeVersion();
     mainWindow.webContents.on('did-finish-load', () => {
         mainWindow.webContents.send('node-version', nodeVersion);
     });
 
-    // Check Apktool installation
     checkApktool();
 
-    // Handle APK file selection from renderer
     mainWindow.webContents.on('ipc-message', (event, channel, apkFilePath) => {
         if (channel === 'apk-file-selected') {
-            runApktool(apkFilePath);
+            if (!isProcessing) {
+                mainWindow.webContents.send('toggle-file-input', false); // Disable file input
+                console.log('Sent toggle-file-input(false) to disable the file input.');
+                runApktool(apkFilePath);
+            } else {
+                mainWindow.webContents.send('log-message', 'An APK is already being processed. Please wait.');
+            }
         }
     });
 
-    // Ensure Hermes output directories exist
     ensureHermesDirectories();
-
-    // No further actions on startup, just setting up the environment
 }
-
 
 app.whenReady().then(() => {
     app.dock?.setIcon(path.join(__dirname, 'assets', 'icons', 'erucsbo.jpg'));

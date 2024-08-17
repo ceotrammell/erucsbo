@@ -57,12 +57,44 @@
             background: #2f2f2f;
         }
         .console-box::-webkit-scrollbar-thumb {
-            background-color: #888; /* Color of the scrollbar handle */
+            background-color: #888;
             border-radius: 10px;
-            border: 2px solid #2f2f2f; /* Add space around scrollbar handle */
+            border: 2px solid #2f2f2f;
         }
         .console-box::-webkit-scrollbar-thumb:hover {
-            background-color: #555; /* Darker color on hover */
+            background-color: #555;
+        }
+
+        /* Tooltip container */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        /* Tooltip text */
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 180px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -90px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        /* Show the tooltip text when hovering over the tooltip container if disabled */
+        .tooltip.disabled:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
@@ -71,9 +103,10 @@
         <h1 class="text-2xl font-bold">Erucsbo</h1>
 
         <!-- File Input Section -->
-        <div class="file-input-container">
+        <div class="file-input-container tooltip">
             <label for="apkFile" class="file-input-label">Select .apk File</label>
             <input type="file" id="apkFile" class="file-input" accept=".apk" onchange="handleFileSelect(event)">
+            <span class="tooltiptext">An APK file is currently being processed.</span>
         </div>
 
         <!-- File Information Grid -->
@@ -99,25 +132,30 @@
     <script>
         // Handle file selection
         function handleFileSelect(event) {
+            if (event.target.disabled) {
+                logToConsole('An APK is already being processed. Please wait.');
+                event.preventDefault();
+                return;
+            }
+
             const file = event.target.files[0];
             const fileInfo = document.getElementById('fileInfo');
             const fileName = document.getElementById('fileName');
             const fileSize = document.getElementById('fileSize');
 
             if (file) {
-                // Check if the selected file is an .apk file
                 if (file.name.endsWith('.apk')) {
                     fileName.textContent = file.name;
                     fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`;
                     fileInfo.style.display = 'block';
+                    logToConsole('This may take a few moments, please be patient :)');
                     logToConsole(`Selected file: ${file.name}`);
                     logToConsole(`File size: ${(file.size / 1024).toFixed(2)} KB`);
 
-                    // Send the APK file path to the main process to run apktool
                     window.electron.selectApkFile(file.path);
                 } else {
                     alert('Please select a valid .apk file.');
-                    event.target.value = ''; // Clear the input
+                    event.target.value = '';
                     fileInfo.style.display = 'none';
                     logToConsole('Invalid file type selected.');
                 }
@@ -152,6 +190,18 @@
         // Listen for log messages from the main process
         window.electron.logMessage((event, message) => {
             logToConsole(message);
+        });
+
+        window.electron.toggleFileInput((event, enable) => {
+            const apkFileInput = document.getElementById('apkFile');
+            apkFileInput.disabled = !enable;
+
+            const tooltipContainer = apkFileInput.parentElement;
+            if (!enable) {
+                tooltipContainer.classList.add('disabled');
+            } else {
+                tooltipContainer.classList.remove('disabled');
+            }
         });
 
         // Handle apktool output

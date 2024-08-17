@@ -116,7 +116,7 @@ function runApktool(apkFilePath) {
     mainWindow.webContents.send('log-message', 'Output directory created.');
 
     const apktoolProcess = os.platform() === 'win32'
-        ? spawn('cmd', ['/c', apktoolPath, 'd', apkFilePath, '-f', '-o', outputFolder])
+        ? spawn('cmd', ['/c', apktoolPath, 'd', apkFilePath, '-f', '-o', outputFolder], { stdio: ['ignore', 'pipe', 'pipe'] })
         : spawn(apktoolPath, ['d', apkFilePath, '-f', '-o', outputFolder]);
 
     apktoolProcess.stdout.on('data', (data) => {
@@ -133,8 +133,10 @@ function runApktool(apkFilePath) {
 
     apktoolProcess.on('close', (code) => {
         if (code === 0) {
-            console.log('APK decompiled successfully.');
-            mainWindow.webContents.send('log-message', 'APK decompiled successfully!');
+            const apktoolVersion = '2.9.3';
+            const completionMessage = `Apktool ${apktoolVersion} extraction complete`;
+            console.log(completionMessage);
+            mainWindow.webContents.send('log-message', completionMessage);
         } else {
             const errorMessage = `apktool process exited with code ${code}`;
             console.error(errorMessage);

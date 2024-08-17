@@ -1,8 +1,72 @@
 const { app, BrowserWindow, dialog } = require('electron');
-const path = require('path');
 const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+function installDependencies() {
+    const nodeModulesPath = path.join(__dirname, 'node_modules');
+    if (!fs.existsSync(nodeModulesPath)) {
+        console.log('First run detected. Installing dependencies...');
+        execSync('npm install', { stdio: 'inherit' });
+        console.log('Dependencies installed.');
+    }
+}
+
+function getPythonCommand() {
+    try {
+        if (os.platform() === 'win32') {
+            // On Windows, use `where` command
+            const pythonPath = execSync('where python').toString().trim().split('\n')[0];
+            return pythonPath;
+        } else {
+            // On macOS/Linux, use `which` command
+            try {
+                const python3Path = execSync('which python3').toString().trim();
+                return python3Path;
+            } catch {
+                const pythonPath = execSync('which python').toString().trim();
+                return pythonPath;
+            }
+        }
+    } catch (err) {
+        console.error('Python not found. Please ensure that Python is installed and available in PATH.');
+        dialog.showErrorBox('Error', 'Python is not installed or not available in PATH. Please install Python.');
+        app.quit();
+    }
+}
+
+function checkApktool() {
+    const apktoolPath = os.platform() === 'win32' ? 'apktool.bat' : 'apktool';
+
+    try {
+        execSync(`${apktoolPath} -version`, { stdio: 'ignore' });
+        console.log('Apktool is installed and accessible.');
+    } catch (err) {
+        dialog.showErrorBox('Error', 'Apktool is not installed or not accessible. Please ensure that Apktool is set up correctly.');
+        app.quit();
+    }
+}
+
+function ensureHermesDirectories() {
+    const toolsPath = path.join(__dirname, 'resources', 'tools', 'hermes');
+    const disassemblyOutput = path.join(toolsPath, 'disassemreact');
+    const decompiledOutput = path.join(toolsPath, 'decompiledreact');
+
+    if (!fs.existsSync(disassemblyOutput)) {
+        fs.mkdirSync(disassemblyOutput, { recursive: true });
+        console.log(`Created directory: ${disassemblyOutput}`);
+    }
+
+    if (!fs.existsSync(decompiledOutput)) {
+        fs.mkdirSync(decompiledOutput, { recursive: true });
+        console.log(`Created directory: ${decompiledOutput}`);
+    }
+}
 
 function createWindow() {
+    installDependencies(); // Ensure dependencies are installed
+
     const mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -11,32 +75,24 @@ function createWindow() {
         },
     });
 
-    // Load your index.html
     mainWindow.loadFile('index.html');
 
-    // Check if apktool and hermes-dec are installed globally
-    try {
-        execSync('apktool -version', { stdio: 'ignore' });
-        execSync('hermes-dec -version', { stdio: 'ignore' });
-        console.log('apktool and hermes-dec are installed globally.');
-    } catch (err) {
-        dialog.showErrorBox('Error', 'apktool or hermes-dec is not installed globally. Please install them and restart the application.');
+    // Check Python installation
+    const pythonCommand = getPythonCommand();
+    if (!pythonCommand) {
+        dialog.showErrorBox('Error', 'Python is not installed. The application will now close.');
         app.quit();
+    } else {
+        console.log(`Python found at: ${pythonCommand}`);
     }
 
-    // Ask for folder location when the app starts
-    mainWindow.webContents.on('did-finish-load', () => {
-        const folderPath = dialog.showOpenDialogSync(mainWindow, {
-            properties: ['openDirectory']
-        });
+    // Check Apktool installation
+    checkApktool();
 
-        if (folderPath) {
-            console.log('Selected folder:', folderPath[0]);
-        } else {
-            dialog.showErrorBox('Error', 'No folder was selected. The application will now close.');
-            app.quit();
-        }
-    });
+    // Ensure Hermes output directories exist
+    ensureHermesDirectories();
+
+    // No further actions on startup, just setting up the environment
 }
 
 app.whenReady().then(createWindow);

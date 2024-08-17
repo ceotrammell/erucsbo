@@ -1,10 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Electron App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erucsbo</title>
+    <!-- Link to the locally built Tailwind CSS file -->
+    <link href="./dist/styles.css" rel="stylesheet">
+    <style>
+        /* Additional Custom Styles */
+        body {
+            background-color: #212121;
+        }
+        .console-box {
+            background-color: #2f2f2f;
+            border-radius: 8px;
+            height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            color: white;
+            font-family: monospace;
+        }
+    </style>
 </head>
-<body>
-    <h1>Welcome to My Electron App</h1>
-    <p>Selected folder will be logged in the console.</p>
+<body class="text-white">
+    <div class="p-6">
+        <h1 class="text-2xl font-bold">Erucsbo</h1>
+        <div id="console" class="console-box mt-4">
+            <p>Console output will appear here...</p>
+        </div>
+    </div>
+
+    <script>
+        // Example of logging messages to the console box
+        function logToConsole(message) {
+            const consoleBox = document.getElementById('console');
+            const newLog = document.createElement('p');
+            newLog.textContent = message;
+            consoleBox.appendChild(newLog);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        logToConsole('Initializing Erucsbo...');
+    </script>
 </body>
 </html>

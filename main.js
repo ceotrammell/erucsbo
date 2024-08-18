@@ -20,18 +20,9 @@ function installDependencies() {
 
 function getPythonCommand() {
     try {
-        if (os.platform() === 'win32') {
-            const pythonPath = execSync('where python').toString().trim().split('\n')[0];
-            return pythonPath;
-        } else {
-            try {
-                const python3Path = execSync('which python3').toString().trim();
-                return python3Path;
-            } catch {
-                const pythonPath = execSync('which python').toString().trim();
-                return pythonPath;
-            }
-        }
+        const pythonPath = execSync('where python').toString().trim().split('\n')[0];
+        console.log(`Using Python: ${pythonPath}`);
+        return pythonPath; // Return the full path to Python
     } catch (err) {
         console.error('Python not found. Please ensure that Python is installed and available in PATH.');
         dialog.showErrorBox('Error', 'Python is not installed or not available in PATH. Please install Python.');
@@ -88,12 +79,27 @@ function ensureHermesDirectories() {
 }
 
 function cleanOutputDirectory() {
+    // Delete the main output directory
     if (fs.existsSync(outputDir)) {
         fs.rmSync(outputDir, { recursive: true, force: true });
         console.log('Output directory cleared.');
     }
     fs.mkdirSync(outputDir, { recursive: true });
     console.log('Output directory created.');
+
+    // Delete the disassemreact directory in the root
+    const disassemreactDir = path.join(__dirname, 'disassemreact');
+    if (fs.existsSync(disassemreactDir)) {
+        fs.rmSync(disassemreactDir, { recursive: true, force: true });
+        console.log('Root disassemreact directory cleared.');
+    }
+
+    // Delete the decompiledreact directory in the root
+    const decompiledreactDir = path.join(__dirname, 'decompiledreact');
+    if (fs.existsSync(decompiledreactDir)) {
+        fs.rmSync(decompiledreactDir, { recursive: true, force: true });
+        console.log('Root decompiledreact directory cleared.');
+    }
 }
 
 function runApktool(apkFilePath) {
@@ -115,9 +121,14 @@ function runApktool(apkFilePath) {
     console.log('Output directory created.');
     mainWindow.webContents.send('log-message', 'Output directory created.');
 
+    const sanitizedFileName = path.basename(apkFilePath).replace(/[()]/g, '');
+    const sanitizedFilePath = path.join(path.dirname(apkFilePath), sanitizedFileName);
+
+    fs.renameSync(apkFilePath, sanitizedFilePath);
+
     const apktoolProcess = os.platform() === 'win32'
-        ? spawn('cmd', ['/c', apktoolPath, 'd', apkFilePath, '-f', '-o', outputFolder], { stdio: ['ignore', 'pipe', 'pipe'] })
-        : spawn(apktoolPath, ['d', apkFilePath, '-f', '-o', outputFolder]);
+        ? spawn('cmd', ['/c', apktoolPath, 'd', sanitizedFilePath, '-f', '-o', outputFolder], { stdio: ['ignore', 'pipe', 'pipe'] })
+        : spawn(apktoolPath, ['d', sanitizedFilePath, '-f', '-o', outputFolder]);
 
     apktoolProcess.stdout.on('data', (data) => {
         const message = data.toString().trim();
@@ -136,6 +147,7 @@ function runApktool(apkFilePath) {
         selectedApkFile = null;
 
         if (code === 0) {
+            mainWindow.webContents.send('We pressed it for you, sit back and relax 😄');
             const apktoolVersion = '2.9.3';
             const completionMessage = `Apktool ${apktoolVersion} extraction complete`;
             console.log(completionMessage);
@@ -143,6 +155,17 @@ function runApktool(apkFilePath) {
 
             const bundleName = extractPackageName(outputFolder);
             mainWindow.webContents.send('update-bundle-name', bundleName);
+
+            const isHermes = detectHermes(outputFolder);
+            mainWindow.webContents.send('log-message', isHermes ? 'Hermes is being used in this application.' : 'Hermes is not being used in this application.');
+
+            if (isHermes) {
+                mainWindow.webContents.send('log-message', 'Time to disassemble and Decompile Hermes...');
+                const pythonCommand = getPythonCommand();
+                runHermesDisassembler(outputFolder, pythonCommand);
+                runHermesDecompiler(outputFolder, pythonCommand);
+            }
+
         } else {
             const errorMessage = `apktool process exited with code ${code}`;
             console.error(errorMessage);
@@ -170,6 +193,72 @@ function extractPackageName(outputFolder) {
     }
 
     return null;
+}
+
+function detectHermes(outputFolder) {
+    const assetsPath = path.join(outputFolder, 'assets');
+    const bundleFilePath = path.join(assetsPath, 'index.android.bundle');
+
+    if (fs.existsSync(bundleFilePath)) {
+        try {
+            const buffer = fs.readFileSync(bundleFilePath);
+
+            // Check the first few bytes to determine if the file is Hermes bytecode
+            const hermesMagicBytes = Buffer.from([0xC6, 0x1F, 0xBC, 0x03]); // Example bytes for Hermes detection
+
+            // Slice the buffer to get the first 4 bytes
+            const fileHeader = buffer.slice(0, 4);
+
+            if (fileHeader.equals(hermesMagicBytes)) {
+                return true;
+            }
+        } catch (err) {
+            console.error('Error checking if the bundle uses Hermes:', err);
+            mainWindow.webContents.send('log-message', 'Error checking Hermes status.');
+        }
+    }
+    return false;
+}
+
+function runHermesDisassembler(outputFolder, pythonCommand) {
+    const disassemblyOutputFile = path.join(outputFolder, 'disassemreact');  // The output file path in the 'outputs' directory
+    const bundleFilePath = path.join(outputFolder, 'assets', 'index.android.bundle').replace(/\\/g, '/');
+    const disassemblerScriptPath = path.join(__dirname, 'resources', 'tools', 'hermes', 'hbc_disassembler.py').replace(/\\/g, '/');
+
+    try {
+        // Explicitly use the full path to Python
+        const disassembleCommand = `"${pythonCommand}" "${disassemblerScriptPath}" "${bundleFilePath}" "${disassemblyOutputFile}"`;
+        console.log(`Running Hermes disassembler: ${disassembleCommand}`);
+
+        // Execute the command and explicitly set the cwd
+        execSync(disassembleCommand, { stdio: 'inherit', cwd: path.join(__dirname, 'resources', 'tools', 'hermes') });
+
+        mainWindow.webContents.send('log-message', `[+] Disassembly output wrote to "${disassemblyOutputFile}"`);
+    } catch (err) {
+        console.error('Error running Hermes disassembler:', err);
+        mainWindow.webContents.send('log-message', `Error running Hermes disassembler: ${err.message}`);
+        mainWindow.webContents.send('log-message', `Stack Trace: ${err.stack}`);
+    }
+}
+
+function runHermesDecompiler(outputFolder, pythonCommand) {
+    const decompiledOutputFile = path.join(outputFolder, 'decompiledreact');  // The output file path in the 'outputs' directory
+    const bundleFilePath = path.join(outputFolder, 'assets', 'index.android.bundle').replace(/\\/g, '/');
+    const decompilerScriptPath = path.join(__dirname, 'resources', 'tools', 'hermes', 'hbc_decompiler.py').replace(/\\/g, '/');
+
+    try {
+        const decompileCommand = `"${pythonCommand}" "${decompilerScriptPath}" "${bundleFilePath}" "${decompiledOutputFile}"`;
+        console.log(`Running Hermes decompiler: ${decompileCommand}`);
+
+        // Execute the command and explicitly set the cwd
+        execSync(decompileCommand, { stdio: 'inherit', cwd: path.join(__dirname, 'resources', 'tools', 'hermes') });
+
+        mainWindow.webContents.send('log-message', `[+] Decompiled output wrote to "${decompiledOutputFile}"`);
+    } catch (err) {
+        console.error('Error running Hermes decompiler:', err);
+        mainWindow.webContents.send('log-message', `Error running Hermes decompiler: ${err.message}`);
+        mainWindow.webContents.send('log-message', `Stack Trace: ${err.stack}`);
+    }
 }
 
 function createWindow() {

@@ -7,9 +7,8 @@
     <!-- Link to the locally built Tailwind CSS file -->
     <link href="./dist/styles.css" rel="stylesheet">
     <style>
-        /* Additional Custom Styles */
         body {
-            background-color: #212121;
+        background-color: #212121;
         }
         .console-box {
             background-color: #2f2f2f;
@@ -40,15 +39,27 @@
         }
         .file-info-grid {
             display: grid;
-            grid-template-columns: auto auto;
-            gap: 10px;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
             background-color: #2f2f2f;
             padding: 10px;
             border-radius: 8px;
             color: white;
-            max-width: 400px; /* Limit the width to keep content on the left */
+            max-width: 100%;
+            box-sizing: border-box;
         }
-
+        .file-info-grid div {
+            padding: 10px;
+            border-bottom: 1px solid #414141;
+        }
+        .file-info-grid div:nth-child(odd) {
+            border-bottom: 1px solid #414141;
+        }
+        @media (max-width: 500px) {
+            .file-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         /* Custom scrollbar styling for the console box */
         .console-box::-webkit-scrollbar {
             width: 6px;
@@ -156,7 +167,7 @@
                 fileName.textContent = file.name;
                 fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`;
                 fileInfo.style.display = 'block';
-                logToConsole('This may take a few moments, please be patient :)');
+                logToConsole('This may take a few moments, please be patient 😄');
                 logToConsole(`Selected file: ${file.name}`);
                 logToConsole(`File size: ${(file.size / 1024).toFixed(2)} KB`);
 

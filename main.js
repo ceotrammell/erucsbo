@@ -147,7 +147,7 @@ function runApktool(apkFilePath) {
         selectedApkFile = null;
 
         if (code === 0) {
-            mainWindow.webContents.send('We pressed it for you, sit back and relax 😄');
+            mainWindow.webContents.send('log-message', 'We pressed it for you, sit back and relax 😄');
             const apktoolVersion = '2.9.3';
             const completionMessage = `Apktool ${apktoolVersion} extraction complete`;
             console.log(completionMessage);
@@ -160,10 +160,11 @@ function runApktool(apkFilePath) {
             mainWindow.webContents.send('log-message', isHermes ? 'Hermes is being used in this application.' : 'Hermes is not being used in this application.');
 
             if (isHermes) {
-                mainWindow.webContents.send('log-message', 'Time to disassemble and Decompile Hermes...');
+                mainWindow.webContents.send('log-message', 'Time to disassemble and decompile Hermes...');
                 const pythonCommand = getPythonCommand();
                 runHermesDisassembler(outputFolder, pythonCommand);
                 runHermesDecompiler(outputFolder, pythonCommand);
+                mainWindow.webContents.send('log-message', 'Completed disassemble and decompile of Hermes 😄');
             }
 
         } else {
@@ -186,9 +187,10 @@ function extractPackageName(outputFolder) {
     if (fs.existsSync(manifestPath)) {
         const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
         const packageMatch = manifestContent.match(/package="([^"]+)"/);
+        const sdkMatch = manifestContent.match(/android:compileSdkVersion="([^"]+)"/);
 
         if (packageMatch && packageMatch[1]) {
-            return packageMatch[1];
+            return packageMatch[1] + ` (SDK: ${sdkMatch[1] || 'N/A'})`;
         }
     }
 

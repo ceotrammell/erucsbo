@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Erucsbo</title>
-    <!-- Link to the locally built Tailwind CSS file -->
     <link href="./dist/styles.css" rel="stylesheet">
     <style>
         body {
-        background-color: #212121;
+            background-color: #212121;
         }
+
         .console-box {
             background-color: #2f2f2f;
             border-radius: 8px;
@@ -18,10 +19,14 @@
             padding: 10px;
             color: white;
             font-family: monospace;
+            user-select: text;
+            /* Allows text selection */
         }
+
         .file-input-container {
             margin-top: 20px;
         }
+
         .file-input-label {
             background-color: #4A4A4A;
             padding: 8px 16px;
@@ -30,13 +35,16 @@
             color: #FFFFFF;
             display: inline-block;
         }
+
         .file-input {
             display: none;
         }
+
         .file-info {
             margin-top: 10px;
             display: none;
         }
+
         .file-info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -48,42 +56,46 @@
             max-width: 100%;
             box-sizing: border-box;
         }
+
         .file-info-grid div {
             padding: 10px;
             border-bottom: 1px solid #414141;
         }
+
         .file-info-grid div:nth-child(odd) {
             border-bottom: 1px solid #414141;
         }
+
         @media (max-width: 500px) {
             .file-info-grid {
                 grid-template-columns: 1fr;
             }
         }
-        /* Custom scrollbar styling for the console box */
+
         .console-box::-webkit-scrollbar {
             width: 6px;
         }
+
         .console-box::-webkit-scrollbar-track {
             background: #2f2f2f;
         }
+
         .console-box::-webkit-scrollbar-thumb {
             background-color: #888;
             border-radius: 10px;
             border: 2px solid #2f2f2f;
         }
+
         .console-box::-webkit-scrollbar-thumb:hover {
             background-color: #555;
         }
 
-        /* Tooltip container */
         .tooltip {
             position: relative;
             display: inline-block;
             cursor: pointer;
         }
 
-        /* Tooltip text */
         .tooltip .tooltiptext {
             visibility: hidden;
             width: 180px;
@@ -102,25 +114,46 @@
             font-size: 12px;
         }
 
-        /* Show the tooltip text when hovering over the tooltip container if disabled */
         .tooltip.disabled:hover .tooltiptext {
             visibility: visible;
             opacity: 1;
         }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+            visibility: hidden; /* Initially hidden */
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body class="text-white">
     <div class="p-6">
-        <h1 class="text-2xl font-bold">Erucsbo</h1>
+        <h1 class="text-2xl font-bold">Erucsbo <span id="spinner" class="spinner"></span></h1>
 
-        <!-- File Input Section -->
         <div class="file-input-container tooltip">
             <label for="apkFile" class="file-input-label">Select .apk File</label>
             <input type="file" id="apkFile" class="file-input" accept=".apk" onchange="handleFileSelect(event)">
             <span class="tooltiptext">An APK file is currently being processed.</span>
         </div>
 
-        <!-- File Information Grid -->
         <div id="fileInfo" class="file-info">
             <div class="file-info-grid">
                 <div><strong>File:</strong></div>
@@ -136,16 +169,13 @@
             </div>
         </div>
 
-        <!-- Console Logging Box -->
         <div id="console" class="console-box mt-4">
             <p>Console output will appear here...</p>
         </div>
     </div>
 
     <script>
-        // Handle file selection
         function handleFileSelect(event) {
-
             if (event.target.disabled) {
                 logToConsole('An APK is already being processed. Please wait.');
                 event.preventDefault();
@@ -156,17 +186,19 @@
 
             if (!file) {
                 logToConsole('File selection canceled.');
-                return; // Exit if no file is selected (e.g., when the user presses "Cancel")
+                return;
             }
 
             const fileInfo = document.getElementById('fileInfo');
             const fileName = document.getElementById('fileName');
             const fileSize = document.getElementById('fileSize');
+            const spinner = document.getElementById('spinner');
 
             if (file.name.endsWith('.apk')) {
                 fileName.textContent = file.name;
                 fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`;
                 fileInfo.style.display = 'block';
+                spinner.style.visibility = 'visible'; // Show the spinner
                 logToConsole('This may take a few moments, please be patient 😄');
                 logToConsole(`Selected file: ${file.name}`);
                 logToConsole(`File size: ${(file.size / 1024).toFixed(2)} KB`);
@@ -177,10 +209,10 @@
                 event.target.value = '';
                 fileInfo.style.display = 'none';
                 logToConsole('Invalid file type selected.');
+                spinner.style.visibility = 'hidden'; // Hide the spinner if the file is invalid
             }
         }
 
-        // Function to log messages to the console box
         function logToConsole(message) {
             const consoleBox = document.getElementById('console');
             const newLog = document.createElement('p');
@@ -189,7 +221,6 @@
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
-        // Handle receiving Python and Node versions
         window.electron.pythonVersion((event, version) => {
             document.getElementById('pythonVersion').textContent = version;
             document.getElementById('fileInfo').style.display = 'block';
@@ -200,7 +231,6 @@
             document.getElementById('fileInfo').style.display = 'block';
         });
 
-        // Listen for log messages from the main process
         window.electron.logMessage((event, message) => {
             logToConsole(message);
         });
@@ -210,14 +240,16 @@
             apkFileInput.disabled = !enable;
 
             const tooltipContainer = apkFileInput.parentElement;
+            const spinner = document.getElementById('spinner');
             if (!enable) {
                 tooltipContainer.classList.add('disabled');
+                spinner.style.visibility = 'visible'; // Show the spinner
             } else {
                 tooltipContainer.classList.remove('disabled');
+                spinner.style.visibility = 'hidden'; // Hide the spinner
             }
         });
 
-        // Handle apktool output
         window.electron.apktoolOutput((event, output) => {
             logToConsole(output);
         });

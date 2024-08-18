@@ -11,6 +11,33 @@
             background-color: #212121;
         }
 
+        .tabs {
+            display: flex;
+            cursor: pointer;
+            margin-bottom: 2px;
+            padding-top: 10px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background-color: #4A4A4A;
+            color: white;
+            border-radius: 4px 4px 0 0;
+            margin-right: 2px;
+        }
+
+        .tab.active {
+            background-color: #2f2f2f;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         .console-box {
             background-color: #2f2f2f;
             border-radius: 8px;
@@ -129,7 +156,8 @@
             display: inline-block;
             margin-left: 10px;
             vertical-align: middle;
-            visibility: hidden; /* Initially hidden */
+            visibility: hidden;
+            /* Initially hidden */
         }
 
         @keyframes spin {
@@ -169,12 +197,43 @@
             </div>
         </div>
 
-        <div id="console" class="console-box mt-4">
-            <p>Console output will appear here...</p>
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'logs')">Logs</div>
+            <div class="tab" onclick="openTab(event, 'detailInfo')">Detail Info</div>
+        </div>
+
+        <div id="logs" class="tab-content active">
+            <div id="consoleLogs" class="console-box">
+                <p>Console output will appear here...</p>
+            </div>
+        </div>
+
+        <div id="detailInfo" class="tab-content">
+            <div id="consoleDetails" class="console-box">
+                <p>Detailed information will appear here...</p>
+            </div>
         </div>
     </div>
 
     <script>
+        function openTab(event, tabName) {
+            // Hide all tab contents
+            var tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(function (content) {
+                content.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            var tabs = document.querySelectorAll('.tab');
+            tabs.forEach(function (tab) {
+                tab.classList.remove('active');
+            });
+
+            // Show the selected tab content and add active class to the clicked tab
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
         function handleFileSelect(event) {
             if (event.target.disabled) {
                 logToConsole('An APK is already being processed. Please wait.');
@@ -214,7 +273,15 @@
         }
 
         function logToConsole(message) {
-            const consoleBox = document.getElementById('console');
+            const consoleBox = document.getElementById('consoleLogs');
+            const newLog = document.createElement('p');
+            newLog.textContent = message;
+            consoleBox.appendChild(newLog);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function logToDetails(message) {
+            const consoleBox = document.getElementById('consoleDetails');
             const newLog = document.createElement('p');
             newLog.textContent = message;
             consoleBox.appendChild(newLog);
@@ -262,10 +329,10 @@
             const bundleElement = document.getElementById('bundleName');
             if (bundleName) {
                 bundleElement.textContent = bundleName;
-                logToConsole(`Bundle: ${bundleName}`);
+                logToDetails(`Bundle: ${bundleName}`);
             } else {
                 bundleElement.textContent = 'N/A';
-                logToConsole('Failed to extract bundle name.');
+                logToDetails('Failed to extract bundle name.');
             }
         }
 

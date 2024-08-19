@@ -20,9 +20,9 @@ function installDependencies() {
 
 function getPythonCommand() {
     try {
-        const pythonPath = execSync('where python').toString().trim().split('\n')[0];
+        const pythonPath = execSync('where python').toString().trim().split('\n')[0].trim();
         console.log(`Using Python: ${pythonPath}`);
-        return pythonPath; // Return the full path to Python
+        return pythonPath;
     } catch (err) {
         console.error('Python not found. Please ensure that Python is installed and available in PATH.');
         dialog.showErrorBox('Error', 'Python is not installed or not available in PATH. Please install Python.');
@@ -51,8 +51,12 @@ function getNodeVersion() {
 }
 
 function checkApktool() {
-    const apktoolPath = os.platform() === 'win32' ? 'apktool.bat' : 'apktool';
+    const apktoolPath = os.platform() === 'win32'
+        ? path.join(__dirname, 'resources', 'tools', 'apktool', 'apktool.bat')
+        : path.join(__dirname, 'resources', 'tools', 'apktool', 'apktool');
 
+    console.log('Full apktoolPath:', apktoolPath);
+    
     try {
         execSync(`${apktoolPath} -version`, { stdio: 'ignore' });
         console.log('Apktool is installed and accessible.');

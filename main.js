@@ -164,7 +164,6 @@ function runApktool(apkFilePath) {
                 const pythonCommand = getPythonCommand();
                 runHermesDisassembler(outputFolder, pythonCommand);
                 runHermesDecompiler(outputFolder, pythonCommand);
-                mainWindow.webContents.send('log-message', 'Completed disassemble and decompile of Hermes 😄');
             }
 
         } else {
@@ -222,47 +221,6 @@ function detectHermes(outputFolder) {
     return false;
 }
 
-// function runHermesDisassembler(outputFolder, pythonCommand) {
-//     const disassemblyOutputFile = path.join(outputFolder, 'disassemreact');  // The output file path in the 'outputs' directory
-//     const bundleFilePath = path.join(outputFolder, 'assets', 'index.android.bundle').replace(/\\/g, '/');
-//     const disassemblerScriptPath = path.join(__dirname, 'resources', 'tools', 'hermes', 'hbc_disassembler.py').replace(/\\/g, '/');
-
-//     try {
-//         // Explicitly use the full path to Python
-//         const disassembleCommand = `"${pythonCommand}" "${disassemblerScriptPath}" "${bundleFilePath}" "${disassemblyOutputFile}"`;
-//         console.log(`Running Hermes disassembler: ${disassembleCommand}`);
-
-//         // Execute the command and explicitly set the cwd
-//         execSync(disassembleCommand, { stdio: 'inherit', cwd: path.join(__dirname, 'resources', 'tools', 'hermes') });
-
-//         mainWindow.webContents.send('log-message', `[+] Disassembly output wrote to "${disassemblyOutputFile}"`);
-//     } catch (err) {
-//         console.error('Error running Hermes disassembler:', err);
-//         mainWindow.webContents.send('log-message', `Error running Hermes disassembler: ${err.message}`);
-//         mainWindow.webContents.send('log-message', `Stack Trace: ${err.stack}`);
-//     }
-// }
-
-// function runHermesDecompiler(outputFolder, pythonCommand) {
-//     const decompiledOutputFile = path.join(outputFolder, 'decompiledreact');  // The output file path in the 'outputs' directory
-//     const bundleFilePath = path.join(outputFolder, 'assets', 'index.android.bundle').replace(/\\/g, '/');
-//     const decompilerScriptPath = path.join(__dirname, 'resources', 'tools', 'hermes', 'hbc_decompiler.py').replace(/\\/g, '/');
-
-//     try {
-//         const decompileCommand = `"${pythonCommand}" "${decompilerScriptPath}" "${bundleFilePath}" "${decompiledOutputFile}"`;
-//         console.log(`Running Hermes decompiler: ${decompileCommand}`);
-
-//         // Execute the command and explicitly set the cwd
-//         execSync(decompileCommand, { stdio: 'inherit', cwd: path.join(__dirname, 'resources', 'tools', 'hermes') });
-
-//         mainWindow.webContents.send('log-message', `[+] Decompiled output wrote to "${decompiledOutputFile}"`);
-//     } catch (err) {
-//         console.error('Error running Hermes decompiler:', err);
-//         mainWindow.webContents.send('log-message', `Error running Hermes decompiler: ${err.message}`);
-//         mainWindow.webContents.send('log-message', `Stack Trace: ${err.stack}`);
-//     }
-// }
-
 function runHermesDisassembler(outputFolder, pythonCommand) {
     const disassemblyOutputFile = path.join(outputFolder, 'disassemreact');
     const bundleFilePath = path.join(outputFolder, 'assets', 'index.android.bundle').replace(/\\/g, '/');
@@ -282,7 +240,7 @@ function runHermesDisassembler(outputFolder, pythonCommand) {
         if (code === 0) {
             mainWindow.webContents.send('log-message', `[+] Disassembly output wrote to "${disassemblyOutputFile}"`);
         } else {
-            mainWindow.webContents.send('log-message', `Hermes disassembler process exited with code ${code}`);
+            mainWindow.webContents.send('log-message', `Hermes disassembler process exited with code 😔 ${code}`);
         }
     });
 }
@@ -305,8 +263,9 @@ function runHermesDecompiler(outputFolder, pythonCommand) {
     decompileProcess.on('exit', (code) => {
         if (code === 0) {
             mainWindow.webContents.send('log-message', `[+] Decompiled output wrote to "${decompiledOutputFile}"`);
+            mainWindow.webContents.send('log-message', 'Completed disassemble and decompile of Hermes 💯');
         } else {
-            mainWindow.webContents.send('log-message', `Hermes decompiler process exited with code ${code}`);
+            mainWindow.webContents.send('log-message', `Hermes decompiler process exited with code 😔 ${code}`);
         }
     });
 }
